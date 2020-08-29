@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <style>
+        #outgoing {
+            width: 600px;
+            word-wrap: break-word;
+            white-space: normal;
+        }
+    </style>
+
+    <!-- update the version number as needed -->
+    <script defer src="library/firebase_5.9.3_firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="library/firebase_5.9.3_firebase-firestore.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="library/firebase_init.js"></script>
+
+    <script defer src="library/simplepeer.min.js"></script>
+</head>
+
+<body>
+    <div>
+        <button id="host" onclick="host()">Host</button>
+        <div>
+            <div>
+                Porta Aplicativo
+            </div>
+            <div>
+                <input type="text" id="portServer" value="1132"><br><br>
+            </div>
+            <div>
+                Porta Host
+            </div>
+            <div>
+                <input type="text" id="portHost" value="1134"><br><br>
+            </div>
+        </div>
+    </div>
+    <div>
+        <button id="join" onclick="join()">Join</button>
+        <div>
+            <div>
+                Porta Aplicativo
+            </div>
+            <div>
+                <input type="text" id="portClient" value="1134"><br><br>
+            </div>
+        </div>
+    </div>
+    <div>
+        <button id="reset" onclick="reset()">Reset</button>
+    </div>
+    <div>
+        <button id="restart">Restart</button>
+    </div>
+    <div>
+        <button id="recieving">Recieving</button>
+    </div>
+    <div id="status">DESCONECTED</div>
+    <pre id="outgoing"></pre>
+
+    <script>
+        var nodeConsole = require('console');
+        var myConsole = new nodeConsole.Console(process.stdout, process.stderr);
+
+        const express = require('express')
+        const app = express()
+        const port = 8000
+
+        app.get('/', (req, res) => {
+            res.sendFile('interface/app.html', { root: __dirname })
+        })
+
+        app.listen(port, () => {
+            console.log(`Example app listening at http://localhost:${port}`)
+        })
+
+        app.post('/host', (req, res) => {
+            console.log("host client")
+            document.getElementById("host").click()
+        });
+
+        app.post('/reset', (req, res) => {
+            console.log("reset client")
+            document.getElementById("reset").click()
+        });
+
+        app.post("/restart", (req, res) => {
+            console.log("restart client")
+            document.getElementById("restart").click()
+        })
+
+        var udp = require('dgram');
+
+        // creating a udp server
+        var server = udp.createSocket('udp4');
+
+        // emits when any error occurs
+        server.on('error', function (error) {
+            console.log('Error: ' + error);
+            server.close();
+        });
+
+        //emits when socket is ready and listening for datagram msgs
+        server.on('listening', function () {
+            var address = server.address();
+            var port = address.port;
+            var family = address.family;
+            var ipaddr = address.address;
+            console.log('Server is listening at port' + port);
+            console.log('Server ip :' + ipaddr);
+            console.log('Server is IP4/IP6 : ' + family);
+        });
+
+        //emits after the socket is closed using socket.close();
+        server.on('close', function () {
+            console.log('Socket is closed !');
+        });
+
+        function host() {
+            document.getElementById("host").disabled = true;
+            document.getElementById("join").disabled = true;
+            document.getElementById("reset").disabled = true;
+
+            const portClient = document.getElementById("portClient").value
+            const portServer = document.getElementById("portServer").value
+            const portHost = document.getElementById("portHost").value
+
+            document.getElementById("portClient").disabled = true;
+            document.getElementById("portServer").disabled = true;
+            document.getElementById("portHost").disabled = true;
+
+            const p = new SimplePeer({
+                initiator: true,
+                trickle: false
+            })
+
+            p.on('error', err => console.log('error', err))
+
+            p.on('signal', data => {
+                console.log('SIGNAL', JSON.stringify(data))
+                document.querySelector('#outgoing').textContent = JSON.stringify(data)
+
+                async function create() {
+                    document.getElementById("status").innerHTML = 'WAITING ...'
+
+                    const db = firebase.firestore()
+                    db.collection("rooms").add(
+                        {
+                            host: JSON.stringify(data),
+                            client: null
+                        }
+                    )
+
+                    db.collection("rooms").onSnapshot(
+                        snap => {
+                            snap.forEach(doc => {
+                                if (doc.data().client != null) {
+                                    p.signal(JSON.parse(doc.data().client));
+
+                                    db.collection("rooms").get().then(
+                                        snap => {
+                                            snap.forEach(doc => {
+                                                db
+                                                    .collection("rooms")
+                                                    .doc(doc.id)
+                                                    .delete();
+                                            });
+                                        }
+                                    );
+                                }
+                            });
+                        }
+                    );
+                }
+
+                create();
+            })
+
+            p.on('connect', () => {
+                console.log('CONNECT')
+                document.getElementById("status").innerHTML = 'CONNECT'
+
+                //server.bind(1132);
+                server.bind({
+                    address: 'localhost',
+                    port: portServer,
+                    exclusive: true
+                });
+            })
+
+            p.on('data', data => {
+                document.getElementById("recieving").click()
+
+                server.send(data, portHost, 'localhost')
+            })
+
+            // emits on new datagram msg
+            server.on('message', function (msg, info) {
+                p.send(msg)
+            });
+        }
+
+        function join() {
+            document.getElementById("host").disabled = true;
+            document.getElementById("join").disabled = true;
+            document.getElementById("reset").disabled = true;
+
+            const portClient = document.getElementById("portClient").value
+            const portServer = document.getElementById("portServer").value
+            const portHost = document.getElementById("portHost").value
+
+            document.getElementById("portClient").disabled = true;
+            document.getElementById("portServer").disabled = true;
+            document.getElementById("portHost").disabled = true;
+
+            var doc_host;
+            var port;
+
+            const p = new SimplePeer({
+                initiator: false,
+                trickle: false
+            })
+
+            p.on('error', err => console.log('error', err))
+
+            p.on('signal', data => {
+                console.log('SIGNAL', JSON.stringify(data))
+                document.querySelector('#outgoing').textContent = JSON.stringify(data)
+
+                const db = firebase.firestore();
+                db.collection("rooms").doc(doc_host.id).set(
+                    {
+                        host: doc_host.data().host,
+                        client: JSON.stringify(data)
+                    }
+                )
+            })
+
+            async function enter() {
+                document.getElementById("status").innerHTML = 'NOT FOUND HOST'
+
+                const db = firebase.firestore();
+                db.collection("rooms").get().then(
+                    snap => {
+                        snap.forEach(doc => {
+                            document.getElementById("status").innerHTML = 'FOUNDED HOST'
+
+                            doc_host = doc
+
+                            p.signal(JSON.parse(doc.data().host))
+                        });
+                    }
+                );
+            }
+
+            enter()
+
+            p.on('connect', () => {
+                console.log('CONNECT')
+                document.getElementById("status").innerHTML = 'CONNECT'
+
+                //server.bind(1134);
+                server.bind({
+                    address: 'localhost',
+                    port: portClient,
+                    exclusive: true
+                });
+            })
+
+            // emits on new datagram msg
+            server.on('message', function (msg, info) {
+                p.send(msg)
+                port = info.port
+            });
+
+            p.on('data', data => {
+                server.send(data, port, 'localhost')
+            })
+        }
+
+        function reset() {
+            const db = firebase.firestore();
+            db.collection("rooms").get().then(
+                snap => {
+                    snap.forEach(doc => {
+                        db
+                            .collection("rooms")
+                            .doc(doc.id)
+                            .delete();
+                    });
+                }
+            );
+        }
+
+    </script>
+
+    <!-- You can also require other files to run in this process -->
+    <script src="../renderer.js"></script>
+</body>
+
+</html>

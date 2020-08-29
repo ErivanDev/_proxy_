@@ -1,0 +1,61 @@
+{
+  "name": "electron-quick-start",
+  "version": "1.0.0",
+  "description": "A minimal Electron application",
+  "main": "main.js",
+  "scripts": {
+    "postinstall": "install-app-deps",
+    "start": "npm install && electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "repository": "https://github.com/electron/electron-quick-start",
+  "keywords": [
+    "Electron",
+    "quick",
+    "start",
+    "tutorial",
+    "demo"
+  ],
+  "build": {
+    "appId": "com.pop.portal.proxy.app",
+    "dmg": {
+      "contents": [
+        {
+          "x": 110,
+          "y": 150
+        },
+        {
+          "x": 240,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "win": {
+      "target": "squirrel",
+      "icon": "build/icon.ico"
+    }
+  },
+  "author": {
+    "name": "Erivan Pereira",
+    "email": "gasparzinho633@gmail.com",
+    "url": "http://twitter.com/snoopyrado"
+  },
+  "license": "CC0-1.0",
+  "devDependencies": {
+    "electron": "^10.0.0",
+    "electron-builder": "^22.8.0"
+  },
+  "dependencies": {
+    "electron-builder-squirrel-windows": "^22.8.1",
+    "express": "^4.17.1"
+  }
+}

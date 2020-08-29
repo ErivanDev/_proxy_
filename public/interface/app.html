@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Interface Server</title>
+</head>
+
+<body>
+    <h1>Interface Server</h1>
+    <button id="reset">Reset</button>
+    <button id="host">Host</button>
+    <button id="restart">Restart</button>
+</body>
+<script>
+    console.log('Client-side code running');
+
+    const reset = document.getElementById('reset');
+    reset.addEventListener('click', function (e) {
+        console.log('button was clicked');
+
+        fetch('/reset', { method: 'POST' })
+            .then(function (response) {
+                if (response.ok) {
+                    console.log('Click was recorded');
+                    return;
+                }
+                throw new Error('Request failed.');
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    });
+
+    const host = document.getElementById('host');
+    host.addEventListener('click', function (e) {
+        console.log('button was clicked');
+
+        fetch('/host', { method: 'POST' })
+            .then(function (response) {
+                if (response.ok) {
+                    console.log('Click was recorded');
+                    return;
+                }
+                throw new Error('Request failed.');
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
+    });
+
+    const restart = document.getElementById('restart');
+    restart.addEventListener('click', function (e) {
+        console.log('button was clicked');
+
+        fetch('/restart', { method: 'POST' })
+            .then(function (response) {
+                if (response.ok) {
+                    console.log('Click was recorded');
+                    return;
+                }
+                throw new Error('Request failed.');
+            })
+            .catch(function (error) {
+                console.log(error);
+
+                location.reload(); 
+            });
+    });
+
+    
+</script>
+
+</html>
